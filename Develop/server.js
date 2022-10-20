@@ -1,6 +1,6 @@
 const express = require('express');
-const notes = require('./db/db.json');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = 3001;
@@ -9,6 +9,18 @@ const PORT = 3001;
 app.use(express.json());
 app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
+
+// server logic
+var notes = [];
+const updateNotes = () => {
+  fs.readFile('./db/db.json', (err, data) => {
+    if(err) {
+      console.log("Error, Unable to read db.json: " + err);
+    }
+    notes = JSON.parse(data);
+  });
+  return notes;
+};
 
 // routes - what happens when some client sends a GET for '/'
 app.get('/', (req, res) => 
@@ -20,17 +32,28 @@ app.get('/notes', (req, res) =>
 );
 
 app.get('/api/notes', (req, res) =>
-  res.json(notes)
+  res.json(updateNotes())
 );
 
 app.post('/api/notes', (req, res) => {
-  var response = {
-    status: 'success',
-    data: req.body,
-  };
-  res.status(201).json(response);
+  var parsedNotes = updateNotes();
   
-  console.log(req.body);
+  var newNote = {
+    "title": req.body.title,
+    "text": req.body.text,
+    "id": parsedNotes.length + 1
+  };
+
+  parsedNotes.push(newNote);
+
+  // Write updated reviews back to the file
+  fs.writeFile('./db/db.json', JSON.stringify(parsedNotes, null, 4),
+    (writeErr) => writeErr
+        ? console.error('Unable to update db.json' + writeErr)
+        : console.info('Successfully updated notes!')
+  );
+
+  res.json(newNote);
 });
 
 // set up listener

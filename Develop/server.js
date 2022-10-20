@@ -3,14 +3,18 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const PORT = 3001;
+
+let PORT = process.env.PORT;
+if (PORT == null || PORT == "") {
+  PORT = 8000;
+}
 
 // Middleware
 app.use(express.json());
 app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 
-// server logic
+// read file logic
 var notes = [];
 const updateNotes = () => {
   fs.readFile('./db/db.json', (err, data) => {

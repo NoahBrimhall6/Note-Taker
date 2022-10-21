@@ -1,8 +1,10 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const util = require('util');
 
 const app = express();
+const readFromFile = util.promisify(fs.readFile);
 
 let PORT = process.env.PORT;
 if (PORT == null || PORT == "") {
@@ -15,11 +17,13 @@ app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 
 // read file logic
-var notes = [];
+var notes;
 const updateNotes = () => {
-  fs.readFile('./db/db.json', (err, data) => {
+  readFromFile('./db/db.json', 'utf8', (err, data) => {
     if(err) {
       console.log("Error, Unable to read db.json: " + err);
+    } else {
+      console.log("Success! db.json has been read!");
     }
     notes = JSON.parse(data);
   });
@@ -41,23 +45,26 @@ app.get('/api/notes', (req, res) =>
 
 app.post('/api/notes', (req, res) => {
   var parsedNotes = updateNotes();
+  var { title, text } = req.body;
   
   var newNote = {
-    "title": req.body.title,
-    "text": req.body.text,
+    "title": title,
+    "text": text,
     "id": parsedNotes.length + 1
   };
 
   parsedNotes.push(newNote);
 
   // Write updated reviews back to the file
-  fs.writeFile('./db/db.json', JSON.stringify(parsedNotes, null, 4),
-    (writeErr) => writeErr
-        ? console.error('Unable to update db.json' + writeErr)
-        : console.info('Successfully updated notes!')
-  );
+  fs.writeFile('./db/db.json', JSON.stringify(parsedNotes, null, 4), (writeErr) => {
+    if(writeErr) {
+      console.error('Unable to update db.json' + writeErr);
+    } else {
+      console.info('Successfully updated notes!');
+    }
+  });
 
-  res.json(newNote);
+  res.status(200).json(newNote);
 });
 
 // set up listener
